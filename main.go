@@ -55,4 +55,11 @@ func isBlockValid(newBlock Block, oldBlock Block) bool {
 	return true
 }
 
+// It needs in order to pick the right blockchain as the source of truth
+func replaceChain(newBlocks []Block) {
+	if len(newBlocks) > len(BlockChain) {
+		BlockChain = newBlocks
+	}
+}
+
 func main() {}
