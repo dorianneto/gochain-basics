@@ -3,7 +3,12 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"log"
+	"net/http"
+	"os"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var BlockChain []Block
@@ -60,6 +65,39 @@ func replaceChain(newBlocks []Block) {
 	if len(newBlocks) > len(BlockChain) {
 		BlockChain = newBlocks
 	}
+}
+
+func handleGetBlockchain(response http.ResponseWriter, request *http.Request) {}
+func handleWriteBlock(response http.ResponseWriter, request *http.Request)    {}
+
+func router() http.Handler {
+	muxRouter := mux.NewRouter()
+
+	muxRouter.HandleFunc("/", handleGetBlockchain).Methods("GET")
+	muxRouter.HandleFunc("/", handleWriteBlock).Methods("POST")
+
+	return muxRouter
+}
+
+func run() error {
+	router := router()
+
+	port := os.Getenv("PORT")
+	log.Println("Listening on ", port)
+
+	server := &http.Server{
+		Addr:           ":" + port,
+		Handler:        router,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {}
