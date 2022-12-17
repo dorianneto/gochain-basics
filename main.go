@@ -12,6 +12,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 var Blockchain []Block
@@ -109,14 +110,13 @@ func handleWriteBlock(response http.ResponseWriter, request *http.Request) {
 
 	defer request.Body.Close()
 
-	newBlock, err := generateBlock(Blockchain[len(Blockchain-1)], payload.BPM)
+	oldblock := Blockchain[len(Blockchain)-1]
+	newBlock, err := generateBlock(oldblock, payload.BPM)
 
 	if err != nil {
 		respondWithJson(response, request, http.StatusInternalServerError, payload)
 		return
 	}
-
-	oldblock := Blockchain[len(Blockchain-1)]
 
 	if isBlockValid(newBlock, oldblock) {
 		newBlockChain := append(Blockchain, newBlock)
@@ -157,4 +157,21 @@ func run() error {
 	return nil
 }
 
-func main() {}
+func main() {
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		timestamp := time.Now()
+		genesisBlock := Block{0, timestamp.String(), 0, "", ""}
+
+		spew.Dump(genesisBlock)
+
+		Blockchain = append(Blockchain, genesisBlock)
+	}()
+
+	log.Fatal(run())
+}
