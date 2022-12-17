@@ -10,10 +10,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 )
 
-var BlockChain []Block
+var Blockchain []Block
 
 type Block struct {
 	Index     int
@@ -21,6 +22,10 @@ type Block struct {
 	BPM       int
 	Hash      string
 	PrevHash  string
+}
+
+type Payload struct {
+	BPM int
 }
 
 func generateBlock(oldBlock Block, BPM int) (Block, error) {
@@ -64,13 +69,13 @@ func isBlockValid(newBlock Block, oldBlock Block) bool {
 
 // It needs in order to pick the right blockchain as the source of truth
 func replaceChain(newBlocks []Block) {
-	if len(newBlocks) > len(BlockChain) {
-		BlockChain = newBlocks
+	if len(newBlocks) > len(Blockchain) {
+		Blockchain = newBlocks
 	}
 }
 
 func handleGetBlockchain(response http.ResponseWriter, request *http.Request) {
-	bytes, err := json.MarshalIndent(BlockChain, "", " ")
+	bytes, err := json.MarshalIndent(Blockchain, "", " ")
 
 	if err != nil {
 		http.Error(response, err.Error(), http.StatusInternalServerError)
@@ -79,7 +84,48 @@ func handleGetBlockchain(response http.ResponseWriter, request *http.Request) {
 	io.WriteString(response, string(bytes))
 }
 
-func handleWriteBlock(response http.ResponseWriter, request *http.Request) {}
+func respondWithJson(response http.ResponseWriter, request *http.Request, code int, payload interface{}) {
+	output, err := json.MarshalIndent(payload, "", " ")
+
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		response.Write([]byte("HTTP 500: Internal Server Error"))
+		return
+	}
+
+	response.WriteHeader(code)
+	response.Write(output)
+}
+
+func handleWriteBlock(response http.ResponseWriter, request *http.Request) {
+	var payload Payload
+
+	decoder := json.NewDecoder(request.Body)
+
+	if err := decoder.Decode(&payload); err != nil {
+		respondWithJson(response, request, http.StatusBadRequest, request.Body)
+		return
+	}
+
+	defer request.Body.Close()
+
+	newBlock, err := generateBlock(Blockchain[len(Blockchain-1)], payload.BPM)
+
+	if err != nil {
+		respondWithJson(response, request, http.StatusInternalServerError, payload)
+		return
+	}
+
+	oldblock := Blockchain[len(Blockchain-1)]
+
+	if isBlockValid(newBlock, oldblock) {
+		newBlockChain := append(Blockchain, newBlock)
+		replaceChain(newBlockChain)
+		spew.Dump(Blockchain)
+	}
+
+	respondWithJson(response, request, http.StatusCreated, newBlock)
+}
 
 func router() http.Handler {
 	muxRouter := mux.NewRouter()
