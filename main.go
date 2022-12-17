@@ -3,6 +3,8 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -67,8 +69,17 @@ func replaceChain(newBlocks []Block) {
 	}
 }
 
-func handleGetBlockchain(response http.ResponseWriter, request *http.Request) {}
-func handleWriteBlock(response http.ResponseWriter, request *http.Request)    {}
+func handleGetBlockchain(response http.ResponseWriter, request *http.Request) {
+	bytes, err := json.MarshalIndent(BlockChain, "", " ")
+
+	if err != nil {
+		http.Error(response, err.Error(), http.StatusInternalServerError)
+	}
+
+	io.WriteString(response, string(bytes))
+}
+
+func handleWriteBlock(response http.ResponseWriter, request *http.Request) {}
 
 func router() http.Handler {
 	muxRouter := mux.NewRouter()
